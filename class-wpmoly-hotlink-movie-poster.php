@@ -276,12 +276,32 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 			$url = WPMOLY_TMDb::get_image_url( $image['file_path'], $image_type, wpmoly_o( 'poster-size' ) );					
 			// Check the type of file. We'll use this as the 'post_mime_type'.
 			$filetype = wp_check_filetype( $url, null );
+
+			//Gather metadata to update_hotlink_attachment_meta (taken from class-wpmoly-media.php function update_attachment_meta)
+			$tmdb_id    = WPMOLY_Movies::get_movie_meta( $post_id, 'tmdb_id' );
+			$title      = WPMOLY_Movies::get_movie_meta( $post_id, 'title' );
+			$production = WPMOLY_Movies::get_movie_meta( $post_id, 'production_companies' );
+			$director   = WPMOLY_Movies::get_movie_meta( $post_id, 'director' );
+			$original_title = WPMOLY_Movies::get_movie_meta( $post_id, 'original_title' );
+
+			$production = explode( ',', $production );
+			$production = trim( array_shift( $production ) );
+			$year       = WPMOLY_Movies::get_movie_meta( $post_id, 'release_date' );
+			$year       = apply_filters( 'wpmoly_format_movie_date',  $year, 'Y' );
+
+			$find = array( '{title}', '{originaltitle}', '{year}', '{production}', '{director}' );
+			$replace = array( $title, $original_title, $year, $production, $director );
+
+			$_description = str_replace( $find, $replace, wpmoly_o( "{$image_type}-description" ) );
+			$_title       = str_replace( $find, $replace, wpmoly_o( "{$image_type}-title" ) );
+
 			// Prepare an array of post data for the attachment.
 			$attachment = array(
 				'guid'           => $url, 
 				'post_mime_type' => $filetype['type'],
-				'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $url ) ),
-				'post_content'   => '',
+				'post_title'     => $_title, //preg_replace( '/\.[^.]+$/', '', basename( $url ) ),
+				'post_content'   => $_description,
+				'post_excerpt'   => $_description,
 				'post_status'    => 'inherit'
 			);
 			// Insert the attachment.
@@ -289,6 +309,7 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 			if ( is_wp_error( $attach_id ) ) {
 				return new WP_Error( $attach_id->get_error_code(), $attach_id->get_error_message() );
 			}
+			
 			// Make sure that this file is included, as wp_generate_attachment_metadata() depends on it.
 			require_once( ABSPATH . 'wp-admin/includes/image.php' );
 			// Generate the metadata for the attachment, and update the database record.
@@ -297,6 +318,6 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 			
 			//TODO: Commented because it return 200 but still enters on js error function
 			//wpmoly_ajax_response( $attach_id );
-		}
+		}		
 	}
 endif;
