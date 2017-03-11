@@ -261,19 +261,35 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 
 			wpmoly_check_ajax_referer( 'set-movie-poster-hotlink' );
 
-			$image_type = 'poster';	
 			$image   = ( isset( $_POST['image'] )   && '' != $_POST['image']   ? $_POST['image']   : null );
 			$post_id = ( isset( $_POST['post_id'] ) && '' != $_POST['post_id'] ? $_POST['post_id'] : null );
 			$title   = ( isset( $_POST['title'] )   && '' != $_POST['title']   ? $_POST['title']   : null );
 			$tmdb_id = ( isset( $_POST['tmdb_id'] ) && '' != $_POST['tmdb_id'] ? $_POST['tmdb_id'] : null );
+			
+			$response = self::set_featured_image_hotlink_callback_private( $image, $post_id, $tmdb_id, $title );			
+			//TODO: Commented because it return 200 but still enters on js error function, fixed on JS side, but it would be better to fix on server side
+			//Regarding the "error" when returning json to js file http://wordpress.stackexchange.com/questions/220970/weird-encoded-error-when-using-wp-generate-attachment-metadata
+			wpmoly_ajax_response( $response, array(), wpmoly_create_nonce( 'set-movie-poster-hotlink' ) );
+		}
+		
+		private static function set_featured_image_hotlink_callback_private( $image, $post_id, $tmdb_id, $title ) {
+			
+			$image_type = 'poster';	
 
 			// if ( 1 != wpmoly_o( 'poster-featured' ) )
 				// return new WP_Error( 'no_featured', __( 'Movie Posters as featured images option is active. Update your settings to deactivate this.', 'wpmovielibrary' ) );
 
-			if ( is_null( $image ) || is_null( $post_id ) )
+			if ( is_null( $image ) || is_null( $post_id ) ){
 				return new WP_Error( 'invalid', __( 'An error occured when trying to import image: invalid data or Post ID.', 'wpmovielibrary' ) );
+			}
 
-			$url = WPMOLY_TMDb::get_image_url( $image['file_path'], $image_type, wpmoly_o( 'poster-size' ) );					
+			$url = WPMOLY_TMDb::get_image_url( $image['file_path'], $image_type, wpmoly_o( 'poster-size' ) );		
+
+			$existing = WPMOLY_Media::check_for_existing_images( $tmdb_id, $image_type, $url );
+			if ( false !== $existing ){
+				return new WP_Error( 'invalid', __( 'The image you\'re trying to upload already exists.', 'wpmovielibrary' ) );
+			}
+			
 			// Check the type of file. We'll use this as the 'post_mime_type'.
 			$filetype = wp_check_filetype( $url, null );
 
@@ -302,22 +318,28 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 				'post_title'     => $_title, //preg_replace( '/\.[^.]+$/', '', basename( $url ) ),
 				'post_content'   => $_description,
 				'post_excerpt'   => $_description,
+				'post_parent'    => $post_id,
 				'post_status'    => 'inherit'
 			);
-			// Insert the attachment.
-			$attach_id = wp_insert_attachment( $attachment, $url );		
+						
+			$attach_id = wp_insert_attachment( $attachment, $url, $post_id );		
 			if ( is_wp_error( $attach_id ) ) {
 				return new WP_Error( $attach_id->get_error_code(), $attach_id->get_error_message() );
+			}else{			
+				// Make sure that this file is included, as wp_generate_attachment_metadata() depends on it.
+				require_once( ABSPATH . 'wp-admin/includes/image.php' );
+				
+				// Generate the metadata for the attachment, and update the database record.
+				$data = wp_generate_attachment_metadata( $attach_id, $url );				
+				wp_update_attachment_metadata( $attach_id, $data);								
+				
+				update_post_meta( $attach_id, '_wpmoly_' . $image_type . '_related_tmdb_id', $tmdb_id );
+				update_post_meta( $attach_id, '_wpmoly_' . $image_type . '_related_meta_data', $image );
+				update_post_meta( $attach_id, '_wp_attachment_image_alt', $_title );
+				
+				set_post_thumbnail( $post_id, $attach_id );
+				return $attach_id;
 			}
-			
-			// Make sure that this file is included, as wp_generate_attachment_metadata() depends on it.
-			require_once( ABSPATH . 'wp-admin/includes/image.php' );
-			// Generate the metadata for the attachment, and update the database record.
-			wp_update_attachment_metadata( $attach_id, wp_generate_attachment_metadata( $attach_id, $url ) );
-			set_post_thumbnail( $post_id, $attach_id );
-			
-			//TODO: Commented because it return 200 but still enters on js error function
-			//wpmoly_ajax_response( $attach_id );
-		}		
+		}
 	}
 endif;

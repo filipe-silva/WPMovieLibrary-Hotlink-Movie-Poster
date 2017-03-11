@@ -136,7 +136,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		// console.log("_image var with value: ");
 		// console.log(_image);
 
-		wpmoly._post({
+		$.ajax({
+			url: ajaxurl,
+			type: 'POST',
+			dataType: 'text',
 			data: {
 				action: 'wpmoly_set_featured_hotlink',
 				nonce: wpmoly.get_nonce( 'set-movie-poster-hotlink' ),
@@ -157,7 +160,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
 				// console.log("post successful, response is: ");
 				// console.log(response);
 				if ( response ) {
-					wp.media.featuredImage.set( response.data );
+					var start_pos = response.indexOf('"data":') + 7;
+					var end_pos = response.indexOf(',"message":',start_pos);
+					var text_to_get = response.substring(start_pos,end_pos)
+					// console.log(text_to_get);
+					wp.media.featuredImage.set( text_to_get );
 					if(image.attributes){
 						$( '#wpmoly-movie-preview-poster > img' ).prop( 'src', image.attributes.url );
 					}
