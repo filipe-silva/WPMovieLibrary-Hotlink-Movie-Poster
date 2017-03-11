@@ -10,8 +10,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		close_original: function() {},
 		edit_meta_get: function () {}
 	}
-//wpmoly_edit_meta.get
-
+	
 	/**
 	 * Set Poster as featured image.
 	 * 
