@@ -8,7 +8,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		set_featured_original: function() {},
 		close: function() {},
 		close_original: function() {},
-		edit_meta_get: function () {}
+		edit_meta_search : function () {},		
+		edit_meta_search_original : function () {}
 	}
 	
 	/**
@@ -38,11 +39,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		else{			
 			//So we know we've received a string path, and is not from hotlink plugin, that means it's from the core, so we assume it's some automatic stuff
 			//Since it's automatic we hotlink
-			if ( 0 <= parseInt( wp.media.featuredImage.get() ) ) {
-				$('#progressbar #progress').width('100%');
-				$('#progress_status').text( wpmoly_lang.done );
-				window.setTimeout( wpmoly_posters_hotlink.close(), 2000 );
-				return false;
+			if ( undefined != wpmoly_posters._frame ){
+				//Why do we close the frame, when there is no featured image? So lets just check if there even is a frame to close before.
+				if ( 0 <= parseInt( wp.media.featuredImage.get() ) ) {
+					// console.log("closing the frame because no featured image");
+					$('#progressbar #progress').width('100%');
+					$('#progress_status').text( wpmoly_lang.done );
+					window.setTimeout( wpmoly_posters_hotlink.close(), 2000 );
+					return false;
+				}
 			}
 
 			var _image = {file_path: image};
@@ -90,6 +95,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 				window.setTimeout( wpmoly_posters_hotlink.close(), 2000 );
 			}
 		});
+		hotlink = false;
 	};
 
 	/**
@@ -99,6 +105,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		hotlink = false;
 		wpmoly_posters_hotlink.close_original();
 	};
+	
+	wpmoly_posters_hotlink.edit_meta_search = function(){		
+		hotlink = true;
+		wpmoly_posters_hotlink.edit_meta_search_original();
+	}
 	
 	/* Adds event listener for click on action link to open poster modal */
 	$('#postimagediv').on( 'click', '#tmdb_load_posters_hotlink', function( e ) {
@@ -114,5 +125,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	
 	wpmoly_posters_hotlink.close_original = wpmoly_posters.close;
 	wpmoly_posters.close = wpmoly_posters_hotlink.close;
+		 
+	wpmoly_posters_hotlink.edit_meta_search_original = wpmoly_edit_meta.search;
+	wpmoly_edit_meta.search = wpmoly_posters_hotlink.edit_meta_search;
 	
 });
