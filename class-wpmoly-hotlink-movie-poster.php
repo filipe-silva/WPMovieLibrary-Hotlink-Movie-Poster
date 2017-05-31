@@ -85,7 +85,8 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 		public static function wpmoly_external_replace($url){
 			 
 			 $total = substr_count($url, 'http');			 
-			if($total > 1){
+			if($total > 1){				
+				$url = preg_replace("/^http:/i", "https:", $url);
 				$uploads = wp_get_upload_dir();				
 				return str_replace($uploads['baseurl']. "/","",$url);
 			}
