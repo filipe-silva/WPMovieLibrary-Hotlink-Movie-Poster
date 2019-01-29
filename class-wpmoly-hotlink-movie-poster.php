@@ -18,6 +18,7 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 	* @author  Fliipe
 	*/
 	class WPMovieLibrary_Hotlink_Movie_Poster extends WPMOLY_HT_Module {
+	
 
 		/**
 		 * Initialize the plugin by setting localization and loading public scripts
@@ -79,16 +80,45 @@ if ( ! class_exists( 'WPMovieLibrary_Hotlink_Movie_Poster' ) ) :
 			
 			add_action( 'wp_ajax_wpmoly_set_featured_hotlink', __CLASS__ . '::set_featured_image_hotlink_callback' );
 			
-			add_filter( 'wp_get_attachment_url',  __CLASS__ . '::wpmoly_external_replace' );
+			add_filter( 'wp_get_attachment_url',  __CLASS__ . '::wpmoly_external_replace', 10, 2 );
 		}
-				
+			
+		/**
+		 * Available sizes for posters in tmdb "w92","w154","w185","w342","w500","w780","original"
+		 * https://www.themoviedb.org/talk/53c11d4ec3a3684cf4006400
+		 * @since    1.0
+		 */
 		public static function wpmoly_external_replace($url){
 			 
-			 $total = substr_count($url, 'http');			 
+			$total = substr_count($url, 'http');			 
 			if($total > 1){				
-				$uploads = wp_get_upload_dir();				
-				$url = str_replace($uploads['baseurl']. "/","",$url);
-				return preg_replace("/^http:/i", "https:", $url);
+				$uploads = wp_get_upload_dir();
+				$url = str_replace($uploads['baseurl'] . "/","",$url);	
+				$url = str_replace(preg_replace("/^http:/i", "https:", $uploads['baseurl']) . "/","",$url);
+				$url = preg_replace("/^http:/i", "https:", $url);
+				
+				switch ($GLOBALS['wpmolyhl']['size']) {
+					case "w92":
+					case "w154":
+					case "w185":
+					case "w342":
+					case "w500":
+					case "w780":
+					case "original":						
+						$url = preg_replace("/original/", $GLOBALS['wpmolyhl']['size'], $url);
+				}
+				$GLOBALS['wpmolyhl']['size'] = '';
+				
+				if ( is_admin()) {
+					global $pagenow;
+					if ( $pagenow == 'edit.php' || get_post_type() == 'movie') {
+					    $url = preg_replace("/original/", "w92", $url);
+					}
+				}
+				else if ( is_main_query() ) {
+					$url = preg_replace("/original/", "w342", $url);
+				}
+				return $url;
 			}
 			 return $url;
 		}

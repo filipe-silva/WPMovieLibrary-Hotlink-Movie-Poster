@@ -116,3 +116,11 @@ else {
 	add_action( 'init', 'wpmolymp_l10n' );
 	add_action( 'admin_notices', 'wpmolymp_requirements_error' );
 }
+
+function wpmolyhl_global_vars() {
+
+	global $wpmolyhl;
+	$wpmolyhl = array(
+		'size'  => ''
+	);
+}
